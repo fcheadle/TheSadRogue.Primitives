@@ -5,7 +5,7 @@ namespace SadRogue.Primitives
     /// <summary>
     /// Read-only interface for an arbitrary 2D area.
     /// </summary>
-    public interface IReadOnlyArea
+    public interface IReadOnlyArea : IMatchable<IReadOnlyArea>
     {
         /// <summary>
         /// Smallest possible rectangle that encompasses every position in the area.
@@ -37,6 +37,14 @@ namespace SadRogue.Primitives
         /// <param name="position">The position to check.</param>
         /// <returns>True if the specified position is within the area, false otherwise.</returns>
         bool Contains(Point position);
+
+        /// <summary>
+        /// Determines whether or not the given position is considered within the area or not.
+        /// </summary>
+        /// <param name="positionX">X-value of the position to check.</param>
+        /// <param name="positionY">X-value of the position to check.</param>
+        /// <returns>True if the specified position is within the area, false otherwise.</returns>
+        bool Contains(int positionX, int positionY);
 
         /// <summary>
         /// Returns whether or not the given map area intersects the current one. If you intend to

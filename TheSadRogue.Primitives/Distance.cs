@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.Contracts;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
 namespace SadRogue.Primitives
@@ -16,7 +17,7 @@ namespace SadRogue.Primitives
     /// locations and a radius shape are implied by a distance calculation).
     /// </remarks>
     [DataContract]
-    public readonly struct Distance : IEquatable<Distance>
+    public readonly struct Distance : IEquatable<Distance>, IMatchable<Distance>
     {
         /// <summary>
         /// Represents chebyshev distance (equivalent to 8-way movement with no extra cost for diagonals).
@@ -128,6 +129,7 @@ namespace SadRogue.Primitives
         /// <param name="end">Ending point.</param>
         /// <returns>The distance between the two points.</returns>
         [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double Calculate(Point start, Point end) => Calculate(start.X, start.Y, end.X, end.Y);
 
         /// <summary>
@@ -139,6 +141,7 @@ namespace SadRogue.Primitives
         /// <param name="endY">Y-Coordinate of the ending point.</param>
         /// <returns>The distance between the two points.</returns>
         [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double Calculate(double startX, double startY, double endX, double endY)
         {
             double dx = startX - endX;
@@ -153,6 +156,7 @@ namespace SadRogue.Primitives
         /// <param name="deltaChange">The delta-x and delta-y between the two locations.</param>
         /// <returns>The distance between two locations withe the given delta-change values.</returns>
         [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double Calculate(Point deltaChange) => Calculate(deltaChange.X, deltaChange.Y);
 
         /// <summary>
@@ -201,6 +205,14 @@ namespace SadRogue.Primitives
         /// <returns/>
         [Pure]
         public override int GetHashCode() => Type.GetHashCode();
+
+        /// <summary>
+        /// True if the given Distance has the same Type the current one.
+        /// </summary>
+        /// <param name="other">Distance to compare.</param>
+        /// <returns>True if the two distance calculation methods are the same, false if not.</returns>
+        [Pure]
+        public bool Matches(Distance other) => Equals(other);
 
         /// <summary>
         /// True if the two Distances have the same Type.

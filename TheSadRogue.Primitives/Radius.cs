@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
 namespace SadRogue.Primitives
@@ -17,7 +18,7 @@ namespace SadRogue.Primitives
     /// shape).
     /// </remarks>
     [DataContract]
-    public readonly struct Radius : IEquatable<Radius>
+    public readonly struct Radius : IEquatable<Radius>, IMatchable<Radius>
     {
         /// <summary>
         /// Radius is a circle around the center point. CIRCLE would represent movement radius in
@@ -75,7 +76,7 @@ namespace SadRogue.Primitives
         /// Returns an IEnumerable of all positions in a radius of the current shape defined by the given parameters.
         /// </summary>
         /// <remarks>
-        /// If you are getting postions for a radius of the same size frequently, it may be more performant to instead
+        /// If you are getting positions for a radius of the same size frequently, it may be more performant to instead
         /// construct a <see cref="RadiusLocationContext"/> to represent it, and pass that to
         /// <see cref="PositionsInRadius(RadiusLocationContext)"/>.
         ///
@@ -89,6 +90,7 @@ namespace SadRogue.Primitives
         /// <returns>All points in the radius shape defined by the given parameters, in order from least distance to greatest
         /// if <see cref="Radius.Diamond"/> or <see cref="Radius.Square"/> is being used.</returns>
         [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IEnumerable<Point> PositionsInRadius(Point center, int radius, Rectangle bounds)
             => PositionsInRadius(new RadiusLocationContext(center, radius, bounds));
 
@@ -96,7 +98,30 @@ namespace SadRogue.Primitives
         /// Returns an IEnumerable of all positions in a radius of the current shape defined by the given parameters.
         /// </summary>
         /// <remarks>
-        /// If you are getting postions for a radius of the same size frequently, it may be more performant to instead
+        /// If you are getting positions for a radius of the same size frequently, it may be more performant to instead
+        /// construct a <see cref="RadiusLocationContext"/> to represent it, and pass that to
+        /// <see cref="PositionsInRadius(RadiusLocationContext)"/>.
+        ///
+        /// The positions returned are all guaranteed to be within the <paramref name="bounds"/> specified.  As well,
+        /// they are guaranteed to be in order from least distance from center to most distance if either
+        /// <see cref="Radius.Diamond"/> or <see cref="Radius.Square"/> is being used.
+        /// </remarks>
+        /// <param name="centerX">X-value of the center-point of the radius.</param>
+        /// <param name="centerY">Y-value of the center-point of the radius.</param>
+        /// <param name="radius">Length of the radius.</param>
+        /// <param name="bounds">Bounds to restrict the returned values by.</param>
+        /// <returns>All points in the radius shape defined by the given parameters, in order from least distance to greatest
+        /// if <see cref="Radius.Diamond"/> or <see cref="Radius.Square"/> is being used.</returns>
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IEnumerable<Point> PositionsInRadius(int centerX, int centerY, int radius, Rectangle bounds)
+            => PositionsInRadius(new RadiusLocationContext(new Point(centerX, centerY), radius, bounds));
+
+        /// <summary>
+        /// Returns an IEnumerable of all positions in a radius of the current shape defined by the given parameters.
+        /// </summary>
+        /// <remarks>
+        /// If you are getting positions for a radius of the same size frequently, it may be more performant to instead
         /// construct a <see cref="RadiusLocationContext"/> to represent it, and pass that to
         /// <see cref="PositionsInRadius(RadiusLocationContext)"/>.
         ///
@@ -108,8 +133,30 @@ namespace SadRogue.Primitives
         /// <returns>All points in the radius shape defined by the given parameters, in order from least distance to greatest
         /// if <see cref="Radius.Diamond"/> or <see cref="Radius.Square"/> is being used.</returns>
         [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IEnumerable<Point> PositionsInRadius(Point center, int radius)
             => PositionsInRadius(new RadiusLocationContext(center, radius));
+
+        /// <summary>
+        /// Returns an IEnumerable of all positions in a radius of the current shape defined by the given parameters.
+        /// </summary>
+        /// <remarks>
+        /// If you are getting positions for a radius of the same size frequently, it may be more performant to instead
+        /// construct a <see cref="RadiusLocationContext"/> to represent it, and pass that to
+        /// <see cref="PositionsInRadius(RadiusLocationContext)"/>.
+        ///
+        /// The positions returned are guaranteed to be in order from least distance from center to most distance if either
+        /// <see cref="Radius.Diamond"/> or <see cref="Radius.Square"/> is being used.
+        /// </remarks>
+        /// <param name="centerX">X-value of the center-point of the radius.</param>
+        /// <param name="centerY">Y-value of the center-point of the radius.</param>
+        /// <param name="radius">Length of the radius.</param>
+        /// <returns>All points in the radius shape defined by the given parameters, in order from least distance to greatest
+        /// if <see cref="Radius.Diamond"/> or <see cref="Radius.Square"/> is being used.</returns>
+        [Pure]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IEnumerable<Point> PositionsInRadius(int centerX, int centerY, int radius)
+            => PositionsInRadius(new Point(centerX, centerY), radius);
 
         /// <summary>
         /// Returns an IEnumerable of all positions in a radius of the current shape defined by the given context.  Creating
@@ -191,6 +238,13 @@ namespace SadRogue.Primitives
         /// <returns/>
         [Pure]
         public override int GetHashCode() => Type.GetHashCode();
+
+        /// <summary>
+        /// True if the given Radius has the same Type the current one.
+        /// </summary>
+        /// <param name="other">Radius to compare.</param>
+        /// <returns>True if the two radius shapes are the same, false if not.</returns>
+        public bool Matches(Radius other) => Equals(other);
 
         /// <summary>
         /// True if the two radius shapes have the same Type.
@@ -337,10 +391,32 @@ namespace SadRogue.Primitives
         /// <summary>
         /// Constructor.
         /// </summary>
+        /// <param name="centerX">X-value of the starting center-point of the radius.</param>
+        /// <param name="centerY">Y-value of the starting center-point of the radius.</param>
+        /// <param name="radius">The starting length of the radius.</param>
+        /// <param name="bounds">The bounds to restrict the radius to.  Any positions inside the radius but outside
+        /// the bounds will be ignored and considered outside the radius.</param>
+        public RadiusLocationContext(int centerX, int centerY, int radius, Rectangle bounds)
+            : this(new Point(centerX, centerY), radius, bounds)
+        { }
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         /// <param name="center">The starting center-point of the radius.</param>
         /// <param name="radius">The starting length of the radius.</param>
         public RadiusLocationContext(Point center, int radius)
             : this(center, radius, Rectangle.Empty)
+        { }
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="centerX">X-value of the starting center-point of the radius.</param>
+        /// <param name="centerY">Y-value of the starting center-point of the radius.</param>
+        /// <param name="radius">The starting length of the radius.</param>
+        public RadiusLocationContext(int centerX, int centerY, int radius)
+            : this(new Point(centerX, centerY), radius)
         { }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text;
 
@@ -138,14 +139,6 @@ namespace SadRogue.Primitives
         }
 
         /// <summary>
-        /// Inequality comparison -- true if the two areas do NOT contain exactly the same points.
-        /// </summary>
-        /// <param name="lhs"/>
-        /// <param name="rhs"/>
-        /// <returns>True if the areas do NOT contain exactly the same points, false otherwise.</returns>
-        public static bool operator !=(Area lhs, Area rhs) => !(lhs == rhs);
-
-        /// <summary>
         /// Creates an area with the positions all shifted by the given vector.
         /// </summary>
         /// <param name="lhs"/>
@@ -166,27 +159,25 @@ namespace SadRogue.Primitives
         /// <summary>
         /// Compares for equality. Returns true if the two areas contain exactly the same points.
         /// </summary>
-        /// <param name="lhs"/>
-        /// <param name="rhs"/>
+        /// <param name="other"/>
         /// <returns>True if the areas contain exactly the same points, false otherwise.</returns>
-        public static bool operator ==(Area lhs, Area rhs)
+        public bool Matches(IReadOnlyArea? other)
         {
-            if (ReferenceEquals(lhs, rhs))
+            if (other is null)
+                return false;
+
+            if (ReferenceEquals(this, other))
                 return true;
 
-            // If one side is null (can't both be null or above would have returned)
-            if (lhs is null || rhs is null)
-                return false;
-
             // Quick checks that can short-circuit a function that would otherwise require looping over all points
-            if (lhs.Count != rhs.Count)
+            if (Count != other.Count)
                 return false;
 
-            if (lhs.Bounds != rhs.Bounds)
+            if (Bounds != other.Bounds)
                 return false;
 
-            foreach (Point pos in lhs.Positions)
-                if (!rhs.Contains(pos))
+            foreach (Point pos in Positions)
+                if (!other.Contains(pos))
                     return false;
 
             return true;
@@ -221,6 +212,19 @@ namespace SadRogue.Primitives
             if (position.Y < _top)
                 _top = position.Y;
         }
+
+        /// <summary>
+        /// Adds the given position to the list of points within the area if it is not already in the
+        /// list, or does nothing otherwise.
+        /// </summary>
+        /// <remarks>
+        /// Because the class uses a hash set internally to determine what points have already been added,
+        /// this is an average case O(1) operation.
+        /// </remarks>
+        /// <param name="positionX">X-value of the position to add.</param>
+        /// <param name="positionY">Y-value of the position to add.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(int positionX, int positionY) => Add(new Point(positionX, positionY));
 
         /// <summary>
         /// Adds the given positions to the list of points within the area if they are not already in
@@ -258,7 +262,17 @@ namespace SadRogue.Primitives
         /// </summary>
         /// <param name="position">The position to check.</param>
         /// <returns>True if the specified position is within the area, false otherwise.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Contains(Point position) => _positionsSet.Contains(position);
+
+        /// <summary>
+        /// Determines whether or not the given position is within the area or not.
+        /// </summary>
+        /// <param name="positionX">X-value of the position to check.</param>
+        /// <param name="positionY">Y-value of the position to check.</param>
+        /// <returns>True if the specified position is within the area, false otherwise.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Contains(int positionX, int positionY) => Contains(new Point(positionX, positionY));
 
         /// <summary>
         /// Returns whether or not the given area is completely contained within the current one.
@@ -278,22 +292,6 @@ namespace SadRogue.Primitives
 
             return true;
         }
-
-        /// <summary>
-        /// Returns true if the given object is an Area and the two areas contain exactly the same points,
-        /// false otherwise.
-        /// </summary>
-        /// <param name="obj">Object to compare</param>
-        /// <returns>
-        /// True if the object given is a area and contains exactly the same points, false otherwise.
-        /// </returns>
-        public override bool Equals(object? obj) => obj is Area area && this == area;
-
-        /// <summary>
-        /// Returns hash of the underlying set
-        /// </summary>
-        /// <returns>Hash code for the underlying set.</returns>
-        public override int GetHashCode() => _positionsSet.GetHashCode();
 
         /// <summary>
         /// Returns whether or not the given map area intersects the current one. If you intend to
@@ -330,7 +328,18 @@ namespace SadRogue.Primitives
         /// remove operations, it would be best to group them into 1 using <see cref="Remove(IEnumerable{Point})"/>.
         /// </summary>
         /// <param name="position">The position to remove.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Remove(Point position) => Remove(YieldPoint(position));
+
+        /// <summary>
+        /// Removes the given position specified from the area. Particularly when the remove operation
+        /// operation changes the bounds, this operation can be expensive, so if you must do multiple
+        /// remove operations, it would be best to group them into 1 using <see cref="Remove(IEnumerable{Point})"/>.
+        /// </summary>
+        /// <param name="positionX">X-value of the position to remove.</param>
+        /// <param name="positionY">Y-value of the position to remove.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Remove(int positionX, int positionY) => Remove(YieldPoint(new Point(positionX, positionY)));
 
         /// <summary>
         /// Removes positions for which the given predicate returns true from the area.
@@ -374,6 +383,7 @@ namespace SadRogue.Primitives
         /// Removes the given positions from the specified area.
         /// </summary>
         /// <param name="positions">Positions to remove.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Remove(IEnumerable<Point> positions)
         {
             if (positions is HashSet<Point> set)
@@ -386,12 +396,14 @@ namespace SadRogue.Primitives
         /// Removes all positions in the given map area from this one.
         /// </summary>
         /// <param name="area">Area containing positions to remove.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Remove(IReadOnlyArea area) => Remove(area.Positions);
 
         /// <summary>
         /// Removes all positions in the given rectangle from this area.
         /// </summary>
         /// <param name="rectangle">Rectangle containing positions to remove.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Remove(Rectangle rectangle) => Remove(rectangle.Positions());
 
         /// <summary>
@@ -457,6 +469,7 @@ namespace SadRogue.Primitives
             _bottom = bottomLocal;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Swap(ref IReadOnlyArea lhs, ref IReadOnlyArea rhs)
         {
             IReadOnlyArea temp = lhs;
